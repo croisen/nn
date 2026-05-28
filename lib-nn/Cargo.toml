@@ -1,5 +1,5 @@
 [package]
-name = "nn"
+name = "lib-nn"
 authors = [ "Croisen <andrewjames.git.gan@gmail.com>" ]
 version = "0.0.1"
 edition = "2024"
@@ -9,15 +9,8 @@ readme       = "README.md"
 license-file = "LICENSE"
 
 [dependencies]
-lib-matrix = { path = "./lib-matrix" }
-lib-nn = { path = "./lib-nn" }
-anyhow = { version = "1.0.102", default-features = false, features = ["backtrace", "std"] }
-egui = { version = "0.34.3", default-features = false }
+lib-matrix = { path = "../lib-matrix" }
 rand = { version = "0.10.1", default-features = false, features = ["std_rng", "thread_rng"] }
 rayon = { version = "1.12.0", default-features = false }
 serde = { version = "1.0.228", default-features = false, features = ["alloc", "derive", "rc", "serde_derive", "std"] }
 serde_json = { version = "1.0.150", default-features = false, features = ["alloc", "preserve_order", "std"] }
-
-[workspace]
-resolver = "2"
-members = ["lib-matrix", "lib-nn"]
