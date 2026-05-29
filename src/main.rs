@@ -1,13 +1,26 @@
+use anyhow::Result;
+
 use lib_matrix::matrix;
-use lib_nn::{Activation, NeuralNetwork};
+use lib_nn::{Activation, LossFunction, NeuralNetwork};
 
-fn main() {
-    let m = matrix![
-        0.2, 0.3, 0.4, 0.5;
-    ];
-    println!("{m}");
+fn main() -> Result<()> {
+    let inputs = vec![matrix![0, 0], matrix![0, 1], matrix![1, 0], matrix![1, 1]];
+    let outputs = vec![matrix![0, 0], matrix![0, 1], matrix![0, 1], matrix![1, 0]];
+    let mut nn = NeuralNetwork::new(
+        [
+            (2, Activation::Sigmoid),
+            (5, Activation::Sigmoid),
+            (2, Activation::Sigmoid),
+        ],
+        LossFunction::MeanSquaredError,
+        0.01,
+    );
 
-    let n = NeuralNetwork::new(&[4, 6, 7, 8, 2], Activation::SIGMOID);
-    let o = n.forward_propagation(&m);
-    println!("{o}");
+    nn.train(1000, &inputs, &outputs);
+    for (input, output) in inputs.iter().zip(&outputs) {
+        let guess = nn.guess(&input);
+        println!("Input: {input}Guess: {guess}Correct: {output}");
+    }
+
+    Ok(())
 }

@@ -3,7 +3,7 @@ name = "nn"
 authors = [ "Croisen <andrewjames.git.gan@gmail.com>" ]
 version = "0.0.1"
 edition = "2024"
-rust-version = "1.92"
+rust-version = "1.96"
 repository   = "https://github.com/croisen/nn"
 readme       = "README.md"
 license-file = "LICENSE"
@@ -17,6 +17,7 @@ rand = { version = "0.10.1", default-features = false, features = ["std_rng", "t
 rayon = { version = "1.12.0", default-features = false }
 serde = { version = "1.0.228", default-features = false, features = ["alloc", "derive", "rc", "serde_derive", "std"] }
 serde_json = { version = "1.0.150", default-features = false, features = ["alloc", "preserve_order", "std"] }
+# nnl = { version = "0.1.6", default-features = false, features = ["cpu-optimized", "openblas-src"] }
 
 [workspace]
 resolver = "2"
