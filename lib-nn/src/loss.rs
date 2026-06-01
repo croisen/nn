@@ -17,24 +17,18 @@ impl LossFunction {
             LossFunction::MeanSquaredError => {
                 result
                     .as_ref()
-                    .par_iter()
-                    .flatten()
-                    .collect::<Vec<&f64>>()
-                    .par_iter()
-                    .zip(correct.as_ref().par_iter().flatten().collect::<Vec<&f64>>())
-                    .map(|(p, t)| (**p - *t).powi(2))
+                    .iter()
+                    .zip(correct.as_ref().iter())
+                    .map(|(p, t)| (p - t).powi(2))
                     .sum::<f64>()
                     / n
             }
             LossFunction::MeanAbsoluteError => {
                 result
                     .as_ref()
-                    .par_iter()
-                    .flatten()
-                    .collect::<Vec<&f64>>()
-                    .par_iter()
-                    .zip(correct.as_ref().par_iter().flatten().collect::<Vec<&f64>>())
-                    .map(|(p, t)| (**p - *t).abs())
+                    .iter()
+                    .zip(correct.as_ref().iter())
+                    .map(|(p, t)| (p - t).abs())
                     .sum::<f64>()
                     / n
             }
@@ -43,41 +37,19 @@ impl LossFunction {
 
     pub fn derivative(&self, result: impl AsRef<Matrix>, correct: impl AsRef<Matrix>) -> Matrix {
         let n = result.as_ref().len() as f64;
-        let data: Vec<f64> = match self {
+        match self {
             LossFunction::MeanSquaredError => result
                 .as_ref()
-                .par_iter()
-                .flatten()
-                .collect::<Vec<&f64>>()
-                .par_iter()
-                .zip(correct.as_ref().par_iter().flatten().collect::<Vec<&f64>>())
-                .map(|(p, t)| 2.0 * (**p - *t) / n)
-                .collect(),
-            LossFunction::MeanAbsoluteError => result
-                .as_ref()
-                .par_iter()
-                .flatten()
-                .collect::<Vec<&f64>>()
-                .par_iter()
-                .zip(correct.as_ref().par_iter().flatten().collect::<Vec<&f64>>())
-                .map(|(p, t)| {
-                    if **p > *t {
-                        1.0 / n
-                    } else if **p < *t {
-                        -1.0 / n
-                    } else {
-                        0.0
-                    }
-                })
-                .collect(),
-        };
-
-        Matrix::with_vec(
-            result.as_ref().rows,
-            result.as_ref().cols,
-            data.par_chunks(result.as_ref().cols)
-                .map(|v| v.to_vec())
-                .collect(),
-        )
+                .zip(correct.as_ref(), |p, t| 2.0 * (p - t) / n),
+            LossFunction::MeanAbsoluteError => result.as_ref().zip(correct.as_ref(), |p, t| {
+                if p > t {
+                    1.0 / n
+                } else if p < t {
+                    -1.0 / n
+                } else {
+                    0.0
+                }
+            }),
+        }
     }
 }

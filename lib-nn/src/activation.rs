@@ -20,92 +20,98 @@ pub enum Activation {
     Tanh,
     /// Softplus = log(1 + e^x)
     Softplus,
+    /// Softmax = e^x / Σ e^x
+    Softmax,
 }
 
 impl Activation {
     pub fn activate(&self, m: impl AsRef<Matrix>) -> Matrix {
-        let col = m.as_ref().cols;
-        let row = m.as_ref().rows;
-        let data = &m.as_ref().data;
-        let d = match self {
-            Activation::Lu => data.clone(),
-            Activation::ReLU => data
-                .par_iter()
-                .map(|d| d.par_iter().map(|d| d.max(0.0)).collect())
-                .collect(),
-            Activation::LReLU => data
-                .par_iter()
-                .map(|d| {
-                    d.par_iter()
-                        .map(|d| if *d < 0.0 { *d * 0.01 } else { *d })
-                        .collect()
-                })
-                .collect(),
-            Activation::Sigmoid => data
-                .par_iter()
-                .map(|d| d.par_iter().map(|d| 1.0 / (1.0 + E.powf(-d))).collect())
-                .collect(),
-            Activation::Tanh => data
-                .par_iter()
-                .map(|d| {
-                    d.par_iter()
-                        .map(|d| 2.0 / (1.0 + E.powf(-2.0 * d)))
-                        .collect()
-                })
-                .collect(),
-            Activation::Softplus => data
-                .par_iter()
-                .map(|d| d.par_iter().map(|d| f64::ln(1.0 + E.powf(*d))).collect())
-                .collect(),
-        };
-
-        Matrix::with_vec(row, col, d)
+        let m = m.as_ref();
+        match self {
+            Activation::Lu => m.map(Self::lu_activate),
+            Activation::ReLU => m.map(Self::relu_activate),
+            Activation::LReLU => m.map(Self::lrelu_activate),
+            Activation::Sigmoid => m.map(Self::sigmoid_activate),
+            Activation::Tanh => m.map(Self::tanh_activate),
+            Activation::Softplus => m.map(Self::softplus_activate),
+            Activation::Softmax => {
+                let sum = Self::softmax_sum(&m);
+                m.map(|d| Self::softmax_activate(d, sum))
+            }
+        }
     }
 
     pub fn derivative(&self, m: impl AsRef<Matrix>) -> Matrix {
-        let col = m.as_ref().cols;
-        let row = m.as_ref().rows;
-        let data = &m.as_ref().data;
-        let d = match self {
-            Activation::Lu => vec![vec![1.0; col]; row],
-            Activation::ReLU => data
-                .par_iter()
-                .map(|d| {
-                    d.par_iter()
-                        .map(|d| if *d <= 0.0 { 0f64 } else { 1f64 })
-                        .collect::<Vec<f64>>()
-                })
-                .collect(),
-            Activation::LReLU => data
-                .par_iter()
-                .map(|d| {
-                    d.par_iter()
-                        .map(|d| if *d < 0.0 { 0.01 } else { 1.0 })
-                        .collect()
-                })
-                .collect(),
-            Activation::Sigmoid => data
-                .par_iter()
-                .map(|d| {
-                    d.par_iter()
-                        .map(|d| (1.0 / (1.0 + E.powf(-d))) * (E.powf(-d) / (1.0 + E.powf(-d))))
-                        .collect()
-                })
-                .collect(),
-            Activation::Tanh => data
-                .par_iter()
-                .map(|d| {
-                    d.par_iter()
-                        .map(|d| 1.0 - (2.0 / (1.0 + E.powf(-2.0 * d)).powf(2.0)))
-                        .collect()
-                })
-                .collect(),
-            Activation::Softplus => data
-                .par_iter()
-                .map(|d| d.par_iter().map(|d| 1.0 / (1.0 + E.powf(-d))).collect())
-                .collect(),
-        };
+        let m = m.as_ref();
+        match self {
+            Activation::Lu => m.map(Self::lu_derivative),
+            Activation::ReLU => m.map(Self::relu_derivative),
+            Activation::LReLU => m.map(Self::lrelu_derivative),
+            Activation::Sigmoid => m.map(Self::sigmoid_derivative),
+            Activation::Tanh => m.map(Self::tanh_derivative),
+            Activation::Softplus => m.map(Self::softplus_derivative),
+            Activation::Softmax => {
+                let sum = Self::softmax_sum(&m);
+                m.as_ref()
+                    .map(|d| Self::softmax_activate(d, sum) * (sum - d))
+            }
+        }
+    }
 
-        Matrix::with_vec(row, col, d)
+    fn lu_activate(v: &f64) -> f64 {
+        *v
+    }
+
+    fn lu_derivative(_: &f64) -> f64 {
+        1.0
+    }
+
+    fn relu_activate(v: &f64) -> f64 {
+        v.max(0.0)
+    }
+
+    fn relu_derivative(v: &f64) -> f64 {
+        if *v < 0.0 { 0.0 } else { 1.0 }
+    }
+
+    fn lrelu_activate(v: &f64) -> f64 {
+        if *v < 0.0 { v * 0.001 } else { *v }
+    }
+
+    fn lrelu_derivative(v: &f64) -> f64 {
+        if *v < 0.0 { 0.001 } else { 1.0 }
+    }
+
+    fn sigmoid_activate(v: &f64) -> f64 {
+        1.0 / (1.0 + E.powf(-v))
+    }
+
+    fn sigmoid_derivative(v: &f64) -> f64 {
+        Self::sigmoid_activate(&v) * (1.0 - Self::sigmoid_activate(&v))
+    }
+
+    fn tanh_activate(v: &f64) -> f64 {
+        2.0 / (1.0 + E.powf(-2.0 * v))
+    }
+
+    fn tanh_derivative(v: &f64) -> f64 {
+        1.0 - Self::tanh_activate(v).powi(2)
+    }
+
+    fn softplus_activate(v: &f64) -> f64 {
+        E.powf(*v).ln_1p()
+    }
+
+    fn softplus_derivative(v: &f64) -> f64 {
+        let e = E.powf(*v);
+        e / (1.0 + e)
+    }
+
+    fn softmax_sum(m: impl AsRef<Matrix>) -> f64 {
+        m.as_ref().iter().map(|d| E.powf(*d)).sum()
+    }
+
+    fn softmax_activate(v: &f64, sum: f64) -> f64 {
+        E.powf(*v) / sum
     }
 }

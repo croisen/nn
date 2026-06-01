@@ -6,7 +6,7 @@ Neural networks use backpropagation
 
 Backpropagation is a calculus application
 
-Until I know how this works, I'mma use a library
+What even works anymore? (MNIST is too much right now?)
 
 ## References
 
