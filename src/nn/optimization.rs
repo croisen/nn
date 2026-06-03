@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use lib_matrix::Matrix;
+use crate::matrix::Matrix;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Optimization {

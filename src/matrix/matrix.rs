@@ -1,11 +1,13 @@
 use std::fmt::{Display, Result};
 use std::ops::{Add, AddAssign, Index, IndexMut, Mul, MulAssign, Sub, SubAssign};
 
-use rand::distr::OpenClosed01;
+use rand::distr::StandardUniform;
 use rand::{RngExt, rng};
 use rayon::prelude::*;
 use rayon::slice::Iter;
 use serde::{Deserialize, Serialize};
+
+use crate::matrix::distr::HEUniform;
 
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct Matrix {
@@ -25,7 +27,19 @@ impl Matrix {
             cols,
             data: (0..rows * cols)
                 .into_iter()
-                .map(|_| rng().sample(OpenClosed01))
+                .map(|_| rng().sample(StandardUniform))
+                .collect(),
+        }
+    }
+
+    pub fn with_rand_he(rows: usize, cols: usize) -> Self {
+        let s = HEUniform::new(rows, cols);
+        Self {
+            rows,
+            cols,
+            data: (0..rows * cols)
+                .into_iter()
+                .map(|_| rng().sample(s))
                 .collect(),
         }
     }
@@ -140,14 +154,14 @@ macro_rules! matrix {
     ($($($x: expr),+);* $(;)?) => {{
         let data = [$([$($x as f64),*]),*];
         let d = [$($($x as f64),*),*];
-        lib_matrix::Matrix::with_slice(data.len(), data[0].len(), d)
+        nn::Matrix::with_slice(data.len(), data[0].len(), d)
     }};
 
     ($idx: expr, $(@)+ $len: expr) => {{
         let mut d = [0.0; $len];
         d[$idx] = 1 as f64;
 
-        lib_matrix::Matrix::with_slice(1, $len, d)
+        nn::Matrix::with_slice(1, $len, d)
     }};
 }
 

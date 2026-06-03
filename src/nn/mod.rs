@@ -1,10 +1,9 @@
 mod activation;
 mod loss;
-mod nn;
+mod network;
 mod optimization;
 
 pub use activation::Activation;
 pub use loss::LossFunction;
-pub use nn::NeuralNetwork;
+pub use network::NeuralNetwork;
 pub use optimization::Optimization;
-

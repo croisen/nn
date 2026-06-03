@@ -3,7 +3,7 @@ use std::f64::consts::E;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use lib_matrix::Matrix;
+use crate::matrix::Matrix;
 
 #[derive(Default, Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum Activation {

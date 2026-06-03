@@ -9,10 +9,10 @@ use flate2::read::{ZlibDecoder, ZlibEncoder};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_slice, to_string_pretty};
 
-use crate::activation::Activation;
-use crate::loss::LossFunction;
-use crate::optimization::Optimization;
-use lib_matrix::Matrix;
+use crate::matrix::Matrix;
+use crate::nn::activation::Activation;
+use crate::nn::loss::LossFunction;
+use crate::nn::optimization::Optimization;
 
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct NeuralNetwork {
@@ -22,6 +22,7 @@ pub struct NeuralNetwork {
     loss_function: LossFunction,
     optimization: Optimization,
     loss: f64,
+    high_input_size: usize,
 }
 
 impl NeuralNetwork {
@@ -33,14 +34,15 @@ impl NeuralNetwork {
         let (layers, activation): (Vec<usize>, Vec<Activation>) =
             layers.as_ref().into_iter().map(|(a, b)| (*a, *b)).unzip();
 
+        let high_input_size = *layers.iter().max().unwrap();
         let weights: Vec<Matrix> = layers
             .windows(2)
-            .map(|a| Matrix::rand(a[0], a[1])) // i rows, x cols
+            .map(|a| Matrix::with_rand_he(a[0], a[1])) // i rows, x cols
             .collect();
 
         let biases: Vec<Matrix> = layers
             .windows(2)
-            .map(|a| Matrix::rand(1, a[1])) // 1 row, x cols
+            .map(|a| Matrix::with_rand_he(1, a[1])) // 1 row, x cols
             .collect();
 
         Self {
@@ -50,6 +52,7 @@ impl NeuralNetwork {
             weights,
             biases,
             loss: 1.0,
+            high_input_size,
         }
     }
 
@@ -118,6 +121,7 @@ impl NeuralNetwork {
         self.optimization.init_cache(&self.weights, &self.biases);
         let mut now = SystemTime::now();
         let mut force_break = 0;
+        let thresh = if self.high_input_size >= 100 { 10 } else { 100 };
         for epoch in 1.. {
             let mut losses = Box::<[f64]>::new_zeroed_slice(inputs.as_ref().len());
             for (i, input) in inputs.as_ref().iter().enumerate() {
@@ -134,7 +138,7 @@ impl NeuralNetwork {
                 break;
             }
 
-            if epoch % 100 == 0 {
+            if epoch % thresh == 0 {
                 let n = SystemTime::now();
                 let elapsed = n.duration_since(now).unwrap();
                 now = n;
@@ -143,7 +147,7 @@ impl NeuralNetwork {
                     "Epoch {epoch}/... Loss: {avg_loss:08.6} | Elapsed: {}ms",
                     elapsed.as_millis()
                 );
-                if self.loss - avg_loss <= 0.0000001 {
+                if self.loss == avg_loss {
                     println!(
                         "Loss is not going down\n\tprev: {} | now: {avg_loss}",
                         self.loss
