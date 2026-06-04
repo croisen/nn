@@ -1,5 +1,5 @@
 use std::fmt::{Display, Result};
-use std::ops::{Add, AddAssign, Index, IndexMut, Mul, MulAssign, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Index, Mul, MulAssign, Sub, SubAssign};
 
 use rand::distr::StandardUniform;
 use rand::{RngExt, rng};
@@ -7,13 +7,14 @@ use rayon::prelude::*;
 use rayon::slice::Iter;
 use serde::{Deserialize, Serialize};
 
+use crate::matrix::Data;
 use crate::matrix::distr::HEUniform;
 
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct Matrix {
     rows: usize,
     cols: usize,
-    data: Box<[f64]>,
+    data: Data,
 }
 
 impl Matrix {
@@ -128,7 +129,7 @@ impl Matrix {
         Self {
             rows,
             cols,
-            data: data.into(),
+            data: Data::Box(data.into()),
         }
     }
 
@@ -136,7 +137,7 @@ impl Matrix {
         Self {
             rows,
             cols,
-            data: unsafe { std::mem::transmute(data) },
+            data: Data::Static(data),
         }
     }
 
@@ -153,15 +154,15 @@ impl Matrix {
 macro_rules! matrix {
     ($($($x: expr),+);* $(;)?) => {{
         let data = [$([$($x as f64),*]),*];
-        let d = [$($($x as f64),*),*];
-        nn::Matrix::with_slice(data.len(), data[0].len(), d)
+        nn::Matrix::with_static_slice(data.len(), data[0].len(), &[$($($x as f64),*),*])
     }};
 
     ($idx: expr, $(@)+ $len: expr) => {{
-        let mut d = [0.0; $len];
-        d[$idx] = 1 as f64;
-
-        nn::Matrix::with_slice(1, $len, d)
+        static mut D: [f64; $len] = [0.0; $len];
+        unsafe {
+            D[$idx] = 1 as f64;
+            nn::Matrix::with_static_slice(1, $len, &D)
+        }
     }};
 }
 
@@ -197,12 +198,6 @@ impl Index<usize> for Matrix {
     type Output = f64;
     fn index(&self, index: usize) -> &Self::Output {
         &self.data[index]
-    }
-}
-
-impl IndexMut<usize> for Matrix {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.data[index]
     }
 }
 
@@ -559,7 +554,7 @@ impl<'a> MulAssign<&'a Matrix> for Matrix {
             .collect::<Box<[f64]>>();
 
         self.cols = rhs.cols;
-        self.data = data;
+        self.data = Data::Box(data);
     }
 }
 
@@ -584,6 +579,6 @@ impl MulAssign<Matrix> for Matrix {
             .collect::<Box<[f64]>>();
 
         self.cols = rhs.cols;
-        self.data = data;
+        self.data = Data::Box(data);
     }
 }

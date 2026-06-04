@@ -8,7 +8,7 @@ use crate::matrix::Matrix;
 #[derive(Default, Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum Activation {
     /// Linear Unit Function = x
-    Lu,
+    LU,
     /// Rectified Linear Unit = max(0, x)
     #[default]
     ReLU,
@@ -28,7 +28,7 @@ impl Activation {
     pub fn activate(&self, m: impl AsRef<Matrix>) -> Matrix {
         let m = m.as_ref();
         match self {
-            Activation::Lu => m.map(Self::lu_activate),
+            Activation::LU => m.map(Self::lu_activate),
             Activation::ReLU => m.map(Self::relu_activate),
             Activation::LReLU => m.map(Self::lrelu_activate),
             Activation::Sigmoid => m.map(Self::sigmoid_activate),
@@ -44,7 +44,7 @@ impl Activation {
     pub fn derivative(&self, m: impl AsRef<Matrix>) -> Matrix {
         let m = m.as_ref();
         match self {
-            Activation::Lu => m.map(Self::lu_derivative),
+            Activation::LU => m.map(Self::lu_derivative),
             Activation::ReLU => m.map(Self::relu_derivative),
             Activation::LReLU => m.map(Self::lrelu_derivative),
             Activation::Sigmoid => m.map(Self::sigmoid_derivative),

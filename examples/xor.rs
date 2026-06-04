@@ -14,29 +14,28 @@ static INPUTS: LazyLock<Vec<Matrix>> = LazyLock::new(|| {
 });
 static OUTPUTS: LazyLock<Vec<Matrix>> = LazyLock::new(|| {
     vec![
-        //      1, 0
-        matrix![0, 1],
-        matrix![1, 0],
+        //      0, 1
         matrix![1, 0],
         matrix![0, 1],
+        matrix![0, 1],
+        matrix![1, 0],
     ]
 });
 
 fn main() -> Result<()> {
     let p = get_saved(std::env::current_exe()?.parent().unwrap());
     let mut nn = nn_new(&p)?;
-    nn.train_until(0.00001, &*INPUTS, &*OUTPUTS);
+    nn.train(1000, &*INPUTS, &*OUTPUTS);
     nn_test(&mut nn);
+    nn.save(p)?;
 
     Ok(())
 }
 
-fn nn_new(dir: impl AsRef<Path>) -> Result<NeuralNetwork> {
-    let saved = get_saved(dir);
-
-    let nn = if !saved.exists() {
+fn nn_new(saved: impl AsRef<Path>) -> Result<NeuralNetwork> {
+    let nn = if !saved.as_ref().exists() {
         println!("Found no saved neural network in executable dir");
-        NeuralNetwork::new(
+        let mut nn = NeuralNetwork::new(
             [
                 (2, Activation::Sigmoid),  // input size
                 (16, Activation::Sigmoid), // hidden layer 1
@@ -45,7 +44,10 @@ fn nn_new(dir: impl AsRef<Path>) -> Result<NeuralNetwork> {
             LossFunction::MeanSquaredError,
             // Optimization::NONE,
             Optimization::rmsprop(0.01, 0.9, 1e-8),
-        )
+        );
+
+        nn.train_until(0.00001, &*INPUTS, &*OUTPUTS);
+        nn
     } else {
         println!("Using saved neural network");
         NeuralNetwork::load(&saved)?

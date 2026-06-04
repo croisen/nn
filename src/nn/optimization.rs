@@ -11,7 +11,7 @@ pub enum Optimization {
     // Adam,
     // AdaGrad,
     /// learning rate (0.01), rho (0.9), epsilon (1e-8), leave wc and bc with empty vecs
-    RmsProp {
+    RMSProp {
         lr: f64,
         rho: f64,
         eps: f64,
@@ -27,7 +27,7 @@ impl Optimization {
         match self {
             Self::NONE => {}
             Self::SGD { lr: _ } => {}
-            Self::RmsProp {
+            Self::RMSProp {
                 lr: _,
                 rho: _,
                 eps: _,
@@ -47,7 +47,7 @@ impl Optimization {
         match self {
             Self::NONE => (wg.to_owned(), bg.to_owned()),
             Self::SGD { lr } => (wg * *lr, bg * *lr),
-            Self::RmsProp {
+            Self::RMSProp {
                 lr,
                 rho,
                 eps,
@@ -72,7 +72,7 @@ impl Optimization {
     }
 
     pub fn rmsprop(learning_rate: f64, rho: f64, epsilon: f64) -> Self {
-        Self::RmsProp {
+        Self::RMSProp {
             lr: learning_rate,
             rho,
             eps: epsilon,
@@ -84,7 +84,7 @@ impl Optimization {
 
 impl Default for Optimization {
     fn default() -> Self {
-        Self::RmsProp {
+        Self::RMSProp {
             lr: 0.01,
             rho: 0.9,
             eps: 1.0e-8,

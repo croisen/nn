@@ -1,11 +1,8 @@
 use std::fs::{read as fread, write as fwrite};
-use std::io::Read;
 use std::path::Path;
 use std::time::SystemTime;
 
 use anyhow::Result;
-use flate2::Compression;
-use flate2::read::{ZlibDecoder, ZlibEncoder};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_slice, to_string_pretty};
 
@@ -58,27 +55,21 @@ impl NeuralNetwork {
 
     pub fn save(&self, file: impl AsRef<Path>) -> Result<()> {
         let json = to_string_pretty(self)?;
-        let mut e = ZlibEncoder::new(json.as_bytes(), Compression::new(9));
-        let mut compressed = vec![];
-        e.read_to_end(&mut compressed)?;
-        fwrite(file, compressed)?;
+        fwrite(file, json)?;
         Ok(())
     }
 
     pub fn load(file: impl AsRef<Path>) -> Result<Self> {
         let json = fread(file)?;
-        let mut d = ZlibDecoder::new(json.as_slice());
-        let mut decompressed = vec![];
-        d.read_to_end(&mut decompressed)?;
-        let nn = from_slice(decompressed.as_slice())?;
+        let nn = from_slice(json.as_slice())?;
         Ok(nn)
     }
 
     pub fn train(
         &mut self,
         epochs: usize,
-        inputs: impl AsRef<Vec<Matrix>>,
-        correct: impl AsRef<Vec<Matrix>>,
+        inputs: impl AsRef<[Matrix]>,
+        correct: impl AsRef<[Matrix]>,
     ) {
         println!("Training neural network until epoch {epochs}");
         let thresh = (epochs / 100).max(1);
@@ -92,7 +83,7 @@ impl NeuralNetwork {
                 losses[i].write(loss);
             }
 
-            if epoch % (thresh * 10) == 0 {
+            if epoch % thresh == 0 {
                 let loss = unsafe {
                     losses.iter().map(|v| v.assume_init()).sum::<f64>() / losses.len() as f64
                 };
@@ -105,8 +96,6 @@ impl NeuralNetwork {
                     "Epoch {epoch}/{epochs} Loss: {loss:08.6} | Elapsed: {}ms",
                     elapsed.as_millis()
                 );
-            } else if epoch % thresh == 0 {
-                println!("Epoch {epoch}/{epochs}");
             }
         }
     }
@@ -114,8 +103,8 @@ impl NeuralNetwork {
     pub fn train_until(
         &mut self,
         loss: f64,
-        inputs: impl AsRef<Vec<Matrix>>,
-        correct: impl AsRef<Vec<Matrix>>,
+        inputs: impl AsRef<[Matrix]>,
+        correct: impl AsRef<[Matrix]>,
     ) {
         println!("Training neural network until loss is less than: {loss}");
         self.optimization.init_cache(&self.weights, &self.biases);
